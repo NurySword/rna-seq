@@ -1,0 +1,21 @@
+DESeq2 part1: Library Normalization
+
+-- DeSeq2 does not use methods used by RPKM, fPKM, TPM.
+-- EdgeR also does not use above methods.
+-- There are two main problems in library normalization:
+	-- Problem #1: adjusting for differences in library sizes
+	-- Problem #2: adjusting for differences in library composition: RNA-seq (and other high-throughput sequencing) is often used to compare one tissue type to another. For example: liver vs. spleen. It could be that there are a lot of liver specific genes transcribed in liver but not in the spleen. The goal is to calculate a scaling factor for each sample. The scaling factor has to take read depth and library composition into account.
+-- Averages calculated with logs are called "Geometric Averages"
+-- Step 1: Take the log of all the values
+-- Step 2: Average of log values for each gene
+-- Step 3: Filter out rows with infinity. In generaş this step filters out genes with zero read counts in one or more samples. If you are comparing liver and spleen, this will remove all of the genes only transcribed in liver (or spleen). In theory, this helps focus the scaling factors on the house keeping genes - genes transcribed at similar levels regardless of tissue type.
+-- Step 4: Subtract the average log value from the log(counts). This will allow us to identify the genes within each sample that are expressed at levels significantly higher than the average or close to the average or significantly less that the average.
+-- Step 5: Calculate the median of the ratios for each sample. Genes with huge differences in expression have no more influence on the medium than genes with minor differences. Since genes with huge differences will most likely be rare, the effect is to give more influence to moderate differences and "house-keeping" genes.
+-- Step 6: Convert the medians to "normal numbers" to get the final scaling factors for each sample. These values are log values, so they are exponents (in this case, exponents for e)
+-- Step 7: Divide the original read counts by the scaling factors.
+
+Summary
+------------
+Logs eliminate all genes that are only transcribed in one sample type (liver vs spleen). They also help smooth over outlier read counts (via the Geometric mean)
+
+The median further downplays genes that soak up a lot of the reads, putting more emphasis on moderately expressed genes.

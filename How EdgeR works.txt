@@ -1,0 +1,13 @@
+EdgeR normalizes library
+-- step 1: remove all untranscribed genes (remove genes with 0 read counts in all samples)
+-- step 2: pick one sample to be the "reference sample". This is the sample we will use to normalize all of the other samples against. EdgeR picks one sample to normalize all of the remaining samples. What is a good reference sample? EdgeR attempts to identify the most average sample.
+	-- Scale each sample by its total read counts
+	-- For each sample, determine the value such that 75% of the scaled data are equal to or smaller than its
+	-- Average the 75th quantiles
+	-- The "reference sample" is the one who's 75th quantile is closest to the average
+-- step 3: select the genes for calculating the scaling factors. This is done separately for each sample relative to the "reference sample". We will start by looking at the different types of genes to choose from.
+-- step 4: Calculate the weighted average of the remaining log2 ratios. FYI, edgeR calls this: "the weighted trimmed mean of the log2 ratios" because we trimmed off the most extreme genes.
+-- step 5: Convert the weighted average of log2 values to "normal numbers"
+
+
+

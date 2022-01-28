@@ -1,0 +1,10 @@
+# stringtie -p 2 -G /home/nury/workspace/rnaseq/refs/grch38_snp_tran/Homo_sapiens.GRCh38.99.gtf -e -B -o TUMOR_Rep1/transcripts.gtf -A TUMOR_Rep1/gene_abundances.tsv /home/nury/workspace/rnaseq/alignments/hisat2/practice/TUMOR_Rep1.bam
+# StringTie version 1.3.4d
+1	havana	transcript	257864	264733	.	-	.	gene_id "ENSG00000228463"; transcript_id "ENST00000442116"; ref_gene_name "AP006222.1"; cov "0.0"; FPKM "0.000000"; TPM "0.000000";
+1	havana	exon	257864	259025	.	-	.	gene_id "ENSG00000228463"; transcript_id "ENST00000442116"; exon_number "1"; ref_gene_name "AP006222.1"; cov "0.0";
+1	havana	exon	264604	264733	.	-	.	gene_id "ENSG00000228463"; transcript_id "ENST00000442116"; exon_number "2"; ref_gene_name "AP006222.1"; cov "0.0";
+1	havana	transcript	257913	268816	.	-	.	gene_id "ENSG00000228463"; transcript_id "ENST00000448958"; ref_gene_name "AP006222.1"; cov "0.0"; FPKM "0.000000"; TPM "0.000000";
+1	havana	exon	257913	259025	.	-	.	gene_id "ENSG00000228463"; transcript_id "ENST00000448958"; exon_number "1"; ref_gene_name "AP006222.1"; cov "0.0";
+1	havana	exon	261550	261634	.	-	.	gene_id "ENSG00000228463"; transcript_id "ENST00000448958"; exon_number "2"; ref_gene_name "AP006222.1"; cov "0.0";
+1	havana	exon	267303	268204	.	-	.	gene_id "ENSG00000228463"; transcript_id "ENST00000448958"; exon_number "3"; ref_gene_name "AP006222.1"; cov "0.0";
+1	havana	exon	268667	268816	.	-	.	gene_id "ENSG00000228463"; transcript_id "ENST00000448958"; exon_number "4"; ref_gene_name "AP006222.1"; cov "0.0";

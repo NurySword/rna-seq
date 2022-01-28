@@ -1,0 +1,436 @@
+---------------- DOWNLOAD DATA FROM NCBI SRA ----------------
+ 
+cd /home/nury/workspace/rnaseq/data/ 
+mkdir SRR15326622 SRR15326623 SRR15326624 SRR15326625 SRR15326626 SRR15326627 combined
+
+cd /home/nury/workspace/rnaseq/data/SRR15326622
+fasterq-dump --split-files SRR15326622 -p
+
+cd /home/nury/workspace/rnaseq/data/SRR15326623
+fasterq-dump --split-files SRR15326623 -p
+
+cd /home/nury/workspace/rnaseq/data/SRR15326624
+fasterq-dump --split-files SRR15326624 -p
+
+cd /home/nury/workspace/rnaseq/data/SRR15326625
+fasterq-dump --split-files SRR15326625 -p
+
+cd /home/nury/workspace/rnaseq/data/SRR15326626
+fasterq-dump --split-files SRR15326626 -p
+
+cd /home/nury/workspace/rnaseq/data/SRR15326627
+fasterq-dump --split-files SRR15326627 -p
+
+---------------- QUALITY CONTROL ---------------
+
+cd /home/nury/workspace/rnaseq/data/SRR15326622
+fastqc SRR15326622.fastq
+
+cd /home/nury/workspace/rnaseq/data/SRR15326623
+fastqc SRR15326623.fastq
+
+cd /home/nury/workspace/rnaseq/data/SRR15326624
+fastqc SRR15326624.fastq
+
+cd /home/nury/workspace/rnaseq/data/SRR15326625
+fastqc SRR15326625.fastq
+
+cd /home/nury/workspace/rnaseq/data/SRR15326626
+fastqc SRR15326626.fastq
+
+cd /home/nury/workspace/rnaseq/data/SRR15326627
+fastqc SRR15326627.fastq
+
+cd /home/nury/workspace/rnaseq/data/combined
+cp /home/nury/workspace/rnaseq/data/SRR15326622/SRR15326622_fastqc.zip ./
+cp /home/nury/workspace/rnaseq/data/SRR15326623/SRR15326623_fastqc.zip ./
+cp /home/nury/workspace/rnaseq/data/SRR15326624/SRR15326624_fastqc.zip ./
+cp /home/nury/workspace/rnaseq/data/SRR15326625/SRR15326625_fastqc.zip ./
+cp /home/nury/workspace/rnaseq/data/SRR15326626/SRR15326626_fastqc.zip ./
+cp /home/nury/workspace/rnaseq/data/SRR15326627/SRR15326627_fastqc.zip ./
+
+multiQC .
+
+---------------- REFERENCE GENOME & ANNOTATIONS  ---------------- 
+#To download ENSEMBL indexed hg38 human genome and human genome gtf files
+cd $RNA_REFS_DIR
+wget --content-disposition https://cloud.biohpc.swmed.edu/index.php/s/grch38_snp_tran/download
+ 
+# gtf file:  
+wget http://ftp.ensembl.org/pub/release-99/gtf/homo_sapiens/Homo_sapiens.GRCh38.99.gtf.gz
+
+#We can use a perl command-line command to find out how many unique gene IDs exists:
+perl -ne 'if ($_ =~ /(gene_id\s\"ENSG\w+\")/){print "$1\n"}' $RNA_REF_HW_GTF | sort | uniq | wc -l
+
+#view the structure of a single transcript in GTF format.
+grep ENST00000342247 $RNA_REF_HW_GTF | less -p "exon\s" -S
+
+---------------- FLEXBAR TRIM  ---------------- 
+echo $RNA_REFS_DIR
+mkdir -p $RNA_REFS_DIR
+cd $RNA_REFS_DIR
+wget http://genomedata.org/rnaseq-tutorial/illumina_multiplex.fa
+
+flexbar --adapter-min-overlap 7 --adapter-trim-end RIGHT --adapters $RNA_REFS_DIR/illumina_multiplex.fa --pre-trim-left 13 --max-uncalled 300 --min-read-length 25 --threads 2 --zip-output GZ --reads $RNA_HW_DATA_DIR/hcc1395_normal_rep1_r1.fastq.gz --reads2 $RNA_HW_DATA_DIR/hcc1395_normal_rep1_r2.fastq.gz --target $RNA_HW_DATA_TRIM_DIR/hcc1395_normal_rep1
+flexbar --adapter-min-overlap 7 --adapter-trim-end RIGHT --adapters $RNA_REFS_DIR/illumina_multiplex.fa --pre-trim-left 13 --max-uncalled 300 --min-read-length 25 --threads 2 --zip-output GZ --reads $RNA_HW_DATA_DIR/hcc1395_normal_rep2_r1.fastq.gz --reads2 $RNA_HW_DATA_DIR/hcc1395_normal_rep2_r2.fastq.gz --target $RNA_HW_DATA_TRIM_DIR/hcc1395_normal_rep2
+flexbar --adapter-min-overlap 7 --adapter-trim-end RIGHT --adapters $RNA_REFS_DIR/illumina_multiplex.fa --pre-trim-left 13 --max-uncalled 300 --min-read-length 25 --threads 2 --zip-output GZ --reads $RNA_HW_DATA_DIR/hcc1395_normal_rep3_r1.fastq.gz --reads2 $RNA_HW_DATA_DIR/hcc1395_normal_rep3_r2.fastq.gz --target $RNA_HW_DATA_TRIM_DIR/hcc1395_normal_rep3
+																																											 
+flexbar --adapter-min-overlap 7 --adapter-trim-end RIGHT --adapters $RNA_REFS_DIR/illumina_multiplex.fa --pre-trim-left 13 --max-uncalled 300 --min-read-length 25 --threads 2 --zip-output GZ --reads $RNA_HW_DATA_DIR/hcc1395_tumor_rep1_r1.fastq.gz --reads2 $RNA_HW_DATA_DIR/hcc1395_tumor_rep1_r2.fastq.gz --target $RNA_HW_DATA_TRIM_DIR/hcc1395_tumor_rep1 
+flexbar --adapter-min-overlap 7 --adapter-trim-end RIGHT --adapters $RNA_REFS_DIR/illumina_multiplex.fa --pre-trim-left 13 --max-uncalled 300 --min-read-length 25 --threads 2 --zip-output GZ --reads $RNA_HW_DATA_DIR/hcc1395_tumor_rep2_r1.fastq.gz --reads2 $RNA_HW_DATA_DIR/hcc1395_tumor_rep2_r2.fastq.gz --target $RNA_HW_DATA_TRIM_DIR/hcc1395_tumor_rep2 
+flexbar --adapter-min-overlap 7 --adapter-trim-end RIGHT --adapters $RNA_REFS_DIR/illumina_multiplex.fa --pre-trim-left 13 --max-uncalled 300 --min-read-length 25 --threads 2 --zip-output GZ --reads $RNA_HW_DATA_DIR/hcc1395_tumor_rep3_r1.fastq.gz --reads2 $RNA_HW_DATA_DIR/hcc1395_tumor_rep3_r2.fastq.gz --target $RNA_HW_DATA_TRIM_DIR/hcc1395_tumor_rep3 
+
+---------------- ALIGNMENT  ---------------- 
+echo $RNA_ALIGN_HW_DIR
+mkdir -p $RNA_ALIGN_HW_DIR
+cd $RNA_ALIGN_HW_DIR
+
+hisat2 -p 2 --rg-id=hcc1395_normal_1 --rg SM:NRM --rg LB:hcc1395_normal-Mix1 --rg PL:ILLUMINA --rg PU:CXX1234-ACTGAC.1 -x $RNA_REF_HW_INDEX --dta --rna-strandness RF -1 $RNA_HW_DATA_DIR/hcc1395_normal_rep1_r1.fastq.gz -2 $RNA_HW_DATA_DIR/hcc1395_normal_rep1_r2.fastq.gz -S ./NORMAL_Rep1.sam > normal_r1r1.out &
+hisat2 -p 2 --rg-id=hcc1395_normal_2 --rg SM:NRM --rg LB:hcc1395_normal-Mix2 --rg PL:ILLUMINA --rg PU:CXX1234-TGACAC.1 -x $RNA_REF_HW_INDEX --dta --rna-strandness RF -1 $RNA_HW_DATA_DIR/hcc1395_normal_rep2_r1.fastq.gz -2 $RNA_HW_DATA_DIR/hcc1395_normal_rep2_r2.fastq.gz -S ./NORMAL_Rep2.sam > normal_r2r1.out &
+hisat2 -p 2 --rg-id=hcc1395_normal_3 --rg SM:NRM --rg LB:hcc1395_normal-Mix3 --rg PL:ILLUMINA --rg PU:CXX1234-CTGACA.1 -x $RNA_REF_HW_INDEX --dta --rna-strandness RF -1 $RNA_HW_DATA_DIR/hcc1395_normal_rep3_r1.fastq.gz -2 $RNA_HW_DATA_DIR/hcc1395_normal_rep3_r2.fastq.gz -S ./NORMAL_Rep3.sam > normal_r3r1.out &
+
+---- treated (named as tumor) ----
+hisat2 -p 2 --rg-id=hcc1395_tumor_1  --rg SM:NRM --rg LB:hcc1395_tumor-Mix1  --rg PL:ILLUMINA --rg PU:CXX1234-TGACAC.1 -x $RNA_REF_HW_INDEX --dta --rna-strandness RF -1 $RNA_HW_DATA_DIR/hcc1395_tumor_rep1_r1.fastq.gz -2  $RNA_HW_DATA_DIR/hcc1395_tumor_rep1_r2.fastq.gz -S  ./TUMOR_Rep1.sam > tumor_r1r1.out &
+hisat2 -p 2 --rg-id=hcc1395_tumor_2  --rg SM:NRM --rg LB:hcc1395_tumor-Mix2  --rg PL:ILLUMINA --rg PU:CXX1234-GACACT.1 -x $RNA_REF_HW_INDEX --dta --rna-strandness RF -1 $RNA_HW_DATA_DIR/hcc1395_tumor_rep2_r1.fastq.gz -2  $RNA_HW_DATA_DIR/hcc1395_tumor_rep2_r2.fastq.gz -S  ./TUMOR_Rep2.sam > tumor_r2r1.out &
+hisat2 -p 2 --rg-id=hcc1395_tumor_3  --rg SM:NRM --rg LB:hcc1395_tumor-Mix3  --rg PL:ILLUMINA --rg PU:CXX1234-ACACTG.1 -x $RNA_REF_HW_INDEX --dta --rna-strandness RF -1 $RNA_HW_DATA_DIR/hcc1395_tumor_rep3_r1.fastq.gz -2  $RNA_HW_DATA_DIR/hcc1395_tumor_rep3_r2.fastq.gz -S  ./TUMOR_Rep3.sam > tumor_r3r1.out &
+
+---------------- SAM to BAM Conversion ---------------- 
+
+samtools sort -@ 2 -o NORMAL_Rep1.bam  NORMAL_Rep1.sam
+samtools sort -@ 2 -o NORMAL_Rep2.bam  NORMAL_Rep2.sam 
+samtools sort -@ 2 -o NORMAL_Rep3.bam  NORMAL_Rep3.sam 
+samtools sort -@ 2 -o TUMOR_Rep1.bam   TUMOR_Rep1.sam
+samtools sort -@ 2 -o TUMOR_Rep2.bam   TUMOR_Rep2.sam
+samtools sort -@ 2 -o TUMOR_Rep3.bam   TUMOR_Rep3.sam
+
+---------------- MERGE HISAT2 BAM FILES ---------------- 
+
+cd $RNA_ALIGN_HW_DIR
+java -Xmx2g -jar $RNA_HOME/student_tools/picard.jar MergeSamFiles OUTPUT=NORMAL.bam INPUT=NORMAL_Rep1.bam INPUT=NORMAL_Rep2.bam INPUT=NORMAL_Rep3.bam
+java -Xmx2g -jar $RNA_HOME/student_tools/picard.jar MergeSamFiles OUTPUT=TUMOR.bam  INPUT=TUMOR_Rep1.bam INPUT=TUMOR_Rep2.bam INPUT=TUMOR_Rep3.bam
+
+---------------- POST-ALIGNMENT QC ---------------- 
+
+---------------- INDEX BAM FILES ---------------- 
+echo $RNA_ALIGN_HW_DIR
+cd $RNA_ALIGN_HW_DIR
+find *.bam -exec echo samtools index {} \; | sh
+
+echo $RNA_REF_HW_FASTA
+# samtools faidx Homo_sapiens.GRCh38.dna.toplevel.fa
+samtools faidx $RNA_REF_HW_FASTA
+
+-- BAM statistics
+# Use samtools flagstat to get a basic summary of an alignment
+samtools flagstat NORMAL.bam > NORMAL_Bam_Stat.out
+samtools flagstat TUMOR.bam  > TUMOR_Bam_Stat.out
+
+---------------- EXPRESSION ---------------- 
+cd $RNA_HOME/expression/stringtie/ref_only/
+wget https://raw.githubusercontent.com/griffithlab/rnaseq_tutorial/master/scripts/stringtie_expression_matrix.pl
+chmod +x stringtie_expression_matrix.pl
+
+cd $RNA_HOME/
+mkdir -p expression/stringtie/ref_only/
+cd expression/stringtie/ref_only/
+cd $RNA_HOME/expression/stringtie/ref_only/
+
+stringtie -p 2 -G $RNA_REF_HW_GTF -e -B -o NORMAL_Rep1/transcripts.gtf -A NORMAL_Rep1/gene_abundances.tsv $RNA_ALIGN_HW_DIR/NORMAL_Rep1.bam
+stringtie -p 2 -G $RNA_REF_HW_GTF -e -B -o NORMAL_Rep2/transcripts.gtf -A NORMAL_Rep2/gene_abundances.tsv $RNA_ALIGN_HW_DIR/NORMAL_Rep2.bam
+stringtie -p 2 -G $RNA_REF_HW_GTF -e -B -o NORMAL_Rep3/transcripts.gtf -A NORMAL_Rep3/gene_abundances.tsv $RNA_ALIGN_HW_DIR/NORMAL_Rep3.bam
+					   
+stringtie -p 2 -G $RNA_REF_HW_GTF -e -B -o TUMOR_Rep1/transcripts.gtf  -A TUMOR_Rep1/gene_abundances.tsv  $RNA_ALIGN_HW_DIR/TUMOR_Rep1.bam
+stringtie -p 2 -G $RNA_REF_HW_GTF -e -B -o TUMOR_Rep2/transcripts.gtf  -A TUMOR_Rep2/gene_abundances.tsv  $RNA_ALIGN_HW_DIR/TUMOR_Rep2.bam
+stringtie -p 2 -G $RNA_REF_HW_GTF -e -B -o TUMOR_Rep3/transcripts.gtf  -A TUMOR_Rep3/gene_abundances.tsv  $RNA_ALIGN_HW_DIR/TUMOR_Rep3.bam
+
+head NORMAL_Rep1/transcripts.gtf > Stringtie_Assembled_Normal_1.txt
+head NORMAL_Rep2/transcripts.gtf > Stringtie_Assembled_Normal_2.txt
+head NORMAL_Rep3/transcripts.gtf > Stringtie_Assembled_Normal_3.txt
+head  TUMOR_Rep1/transcripts.gtf > Stringtie_Assembled_Tumor_1.txt
+head  TUMOR_Rep2/transcripts.gtf > Stringtie_Assembled_Tumor_2.txt
+head  TUMOR_Rep3/transcripts.gtf > Stringtie_Assembled_Tumor_3.txt
+
+tail NORMAL_Rep1/transcripts.gtf > Stringtie_Assembled_tail.Normal_1.txt
+tail NORMAL_Rep2/transcripts.gtf > Stringtie_Assembled_tail.Normal_2.txt
+tail NORMAL_Rep3/transcripts.gtf > Stringtie_Assembled_tail.Normal_3.txt
+tail  TUMOR_Rep1/transcripts.gtf > Stringtie_Assembled_tail.Tumor_1.txt
+tail  TUMOR_Rep2/transcripts.gtf > Stringtie_Assembled_tail.Tumor_2.txt
+tail  TUMOR_Rep3/transcripts.gtf > Stringtie_Assembled_tail.Tumor_3.txt
+
+awk '{if ($3=="transcript") print}' TUMOR_Rep1/transcripts.gtf | cut -f 1,4,9 | less
+
+head NORMAL_Rep1/t_data.ctab > t_data_ctab.normal.header_1.txt
+head NORMAL_Rep2/t_data.ctab > t_data_ctab.normal.header_2.txt
+head NORMAL_Rep3/t_data.ctab > t_data_ctab.normal.header_3.txt
+head  TUMOR_Rep1/t_data.ctab > t_data_ctab.tumor.header_1.txt
+head  TUMOR_Rep2/t_data.ctab > t_data_ctab.tumor.header_2.txt
+head  TUMOR_Rep3/t_data.ctab > t_data_ctab.tumor.header_3.txt
+
+tail NORMAL_Rep1/t_data.ctab > t_data_ctab.normal.tail_1.txt
+tail NORMAL_Rep2/t_data.ctab > t_data_ctab.normal.tail_2.txt
+tail NORMAL_Rep3/t_data.ctab > t_data_ctab.normal.tail_3.txt
+tail  TUMOR_Rep1/t_data.ctab >  t_data_ctab.tumor.tail_1.txt
+tail  TUMOR_Rep2/t_data.ctab >  t_data_ctab.tumor.tail_2.txt
+tail  TUMOR_Rep3/t_data.ctab >  t_data_ctab.tumor.tail_3.txt
+
+head NORMAL_Rep1/gene_abundances.tsv > gene_abundance_normal_1.header.txt
+head NORMAL_Rep2/gene_abundances.tsv > gene_abundance_normal_2.header.txt
+head NORMAL_Rep3/gene_abundances.tsv > gene_abundance_normal_3.header.txt
+head TUMOR_Rep1/gene_abundances.tsv  > gene_abundance_tumor_1.header.txt
+head TUMOR_Rep2/gene_abundances.tsv  > gene_abundance_tumor_2.header.txt
+head TUMOR_Rep3/gene_abundances.tsv  > gene_abundance_tumor_3.header.txt
+
+tail NORMAL_Rep1/gene_abundances.tsv > gene_abundance_normal_1.tail.txt
+tail NORMAL_Rep2/gene_abundances.tsv > gene_abundance_normal_2.tail.txt
+tail NORMAL_Rep3/gene_abundances.tsv > gene_abundance_normal_3.tail.txt
+tail TUMOR_Rep1/gene_abundances.tsv  >  gene_abundance_tumor_1.tail.txt
+tail TUMOR_Rep2/gene_abundances.tsv  >  gene_abundance_tumor_2.tail.txt
+tail TUMOR_Rep3/gene_abundances.tsv  >  gene_abundance_tumor_3.tail.txt
+
+---------------- EXPRESSION MATRIX ---------------- 
+
+# All transcript içinden gene ve transcript expression bilgilerini extract ediyor. TPM, FPKM, Coverage dosyalarını oluşturuyor.
+
+cd $RNA_HOME/expression/stringtie/ref_only/
+wget https://raw.githubusercontent.com/griffithlab/rnaseq_tutorial/master/scripts/stringtie_expression_matrix.pl
+chmod +x stringtie_expression_matrix.pl
+
+./stringtie_expression_matrix.pl --expression_metric=TPM  		--result_dirs='NORMAL_Rep1,NORMAL_Rep2,NORMAL_Rep3,TUMOR_Rep1,TUMOR_Rep2,TUMOR_Rep3' --transcript_matrix_file=transcript_tpm_all_samples.tsv  		--gene_matrix_file=gene_tpm_all_samples.tsv
+				
+./stringtie_expression_matrix.pl --expression_metric=FPKM 		--result_dirs='NORMAL_Rep1,NORMAL_Rep2,NORMAL_Rep3,TUMOR_Rep1,TUMOR_Rep2,TUMOR_Rep3' --transcript_matrix_file=transcript_fpkm_all_samples.tsv 		--gene_matrix_file=gene_fpkm_all_samples.tsv
+
+./stringtie_expression_matrix.pl --expression_metric=Coverage 	--result_dirs='NORMAL_Rep1,NORMAL_Rep2,NORMAL_Rep3,TUMOR_Rep1,TUMOR_Rep2,TUMOR_Rep3' --transcript_matrix_file=transcript_coverage_all_samples.tsv 	--gene_matrix_file=gene_coverage_all_samples.tsv
+
+head transcript_tpm_all_samples.tsv > transcript_tpm_all_samples.head.txt
+tail transcript_tpm_all_samples.tsv > transcript_tpm_all_samples.tail.txt
+
+head transcript_fpkm_all_samples.tsv > transcript_fpkm_all_samples.head.txt
+tail transcript_fpkm_all_samples.tsv > transcript_fpkm_all_samples.tail.txt
+
+head transcript_coverage_all_samples.tsv > transcript_coverage_all_samples.head.txt
+tail transcript_coverage_all_samples.tsv > transcript_coverage_all_samples.tail.txt
+
+head gene_coverage_all_samples.tsv > gene_coverage_all_samples.head.txt
+tail gene_coverage_all_samples.tsv > gene_coverage_all_samples.tail.txt
+
+head gene_tpm_all_samples.tsv > gene_tpm_all_samples.head.txt
+tail gene_tpm_all_samples.tsv > gene_tpm_all_samples.tail.txt
+
+head gene_fpkm_all_samples.tsv > gene_fpkm_all_samples.head.txt
+tail gene_fpkm_all_samples.tsv > gene_fpkm_all_samples.tail.txt
+
+---------------- HTSEQ-COUNT ---------------- 
+
+# Normalization yapılmamış olan Raw dosyaları üzerinden normalization yapmadan expression estimation hesaplar.
+
+cd $RNA_HOME/
+mkdir -p expression/htseq_counts
+cd expression/htseq_counts
+cd $RNA_HOME/expression/htseq_counts
+
+htseq-count --format bam --order pos --mode intersection-strict --stranded reverse --minaqual 1 --type exon --idattr gene_id $RNA_ALIGN_HW_DIR/NORMAL_Rep1.bam $RNA_REF_GTF > NORMAL_Rep1_gene.tsv
+htseq-count --format bam --order pos --mode intersection-strict --stranded reverse --minaqual 1 --type exon --idattr gene_id $RNA_ALIGN_HW_DIR/NORMAL_Rep2.bam $RNA_REF_GTF > NORMAL_Rep2_gene.tsv
+htseq-count --format bam --order pos --mode intersection-strict --stranded reverse --minaqual 1 --type exon --idattr gene_id $RNA_ALIGN_HW_DIR/NORMAL_Rep3.bam $RNA_REF_GTF > NORMAL_Rep3_gene.tsv
+																																		
+htseq-count --format bam --order pos --mode intersection-strict --stranded reverse --minaqual 1 --type exon --idattr gene_id $RNA_ALIGN_HW_DIR/TUMOR_Rep1.bam $RNA_REF_GTF > TUMOR_Rep1_gene.tsv
+htseq-count --format bam --order pos --mode intersection-strict --stranded reverse --minaqual 1 --type exon --idattr gene_id $RNA_ALIGN_HW_DIR/TUMOR_Rep2.bam $RNA_REF_GTF > TUMOR_Rep2_gene.tsv
+htseq-count --format bam --order pos --mode intersection-strict --stranded reverse --minaqual 1 --type exon --idattr gene_id $RNA_ALIGN_HW_DIR/TUMOR_Rep3.bam $RNA_REF_GTF > TUMOR_Rep3_gene.tsv
+
+
+cd $RNA_HOME/expression/htseq_counts/
+join NORMAL_Rep1_gene.tsv NORMAL_Rep2_gene.tsv | join - NORMAL_Rep3_gene.tsv | join - TUMOR_Rep1_gene.tsv | join - TUMOR_Rep2_gene.tsv | join - TUMOR_Rep3_gene.tsv > gene_read_counts_table_all.tsv
+echo "GeneID NORMAL_Rep1 NORMAL_Rep2 NORMAL_Rep3 TUMOR_Rep1 TUMOR_Rep2 TUMOR_Rep3" > header.txt
+cat header.txt gene_read_counts_table_all.tsv | grep -v "__" | perl -ne 'chomp $_; $_ =~ s/\s+/\t/g; print "$_\n"' > gene_read_counts_table_all_final.tsv		-- raw counts, not normalized
+rm -f gene_read_counts_table_all.tsv header.txt
+head gene_read_counts_table_all_final.tsv
+
+---------------- DIFFERENTIAL EXPRESSION ---------------- 
+
+---------------- BALLGOWN DE ANALYSIS ---------------- 
+
+mkdir -p $RNA_HOME/de/ballgown/ref_only/
+cd $RNA_HOME/de/ballgown/ref_only/
+
+-- Perform Normal vs. Tumor comparison, using all replicates, for known (reference only mode) transcripts:
+
+-- First create a file that lists our 6 expression files, then view that file, then start an R session where we will examine these results:
+
+printf "\"ids\",\"type\",\"path\"\n\"NORMAL__Rep1\",\"NORMAL_\",\"$RNA_HOME/expression/stringtie/ref_only/NORMAL__Rep1\"\n\"NORMAL__Rep2\",\"NORMAL_\",\"$RNA_HOME/expression/stringtie/ref_only/NORMAL__Rep2\"\n\"NORMAL__Rep3\",\"NORMAL_\",\"$RNA_HOME/expression/stringtie/ref_only/NORMAL__Rep3\"\n\"TUMOR__Rep1\",\"TUMOR_\",\"$RNA_HOME/expression/stringtie/ref_only/TUMOR__Rep1\"\n\"TUMOR__Rep2\",\"TUMOR_\",\"$RNA_HOME/expression/stringtie/ref_only/TUMOR__Rep2\"\n\"TUMOR__Rep3\",\"TUMOR_\",\"$RNA_HOME/expression/stringtie/ref_only/TUMOR__Rep3\"\n" > NORMAL__vs_TUMOR_.csv
+cat NORMAL__vs_TUMOR_.csv
+
+---------------- R related installations and configurations ---------------- 
+sudo apt-get install r-base-dev
+export R_LIBS=
+cd $RNA_HOME/student_tools/
+wget https://stat.ethz.ch/R/daily/R-patched.tar.gz
+tar -xzvf R-patched.tar.gz
+cd R-patched
+./configure --prefix=$RNA_HOME/student_tools/R-patched/ --with-x=no
+make
+make install
+./bin/Rscript
+---------------------------------
+R
+install.packages(c("devtools","dplyr","gplots","ggplot2"),repos="http://cran.us.r-project.org")
+quit(save="no")
+
+---------------------------------
+R
+source("http://bioconductor.org/biocLite.R")
+BiocManager::install(c("edgeR", "GenomicRanges", "rhdf5", "biomaRt"))
+quit(save="no")
+
+---------------- Tutorial_Part1_ballgown.R related modifications ---------------- 
+
+cd $RNA_HOME/de/ballgown/ref_only/
+wget https://raw.githubusercontent.com/griffithlab/rnaseq_tutorial/master/scripts/Tutorial_Part1_ballgown.R
+cp Tutorial_Part1_ballgown.R Ballgown_Part_1.R
+sed -i 's/UHR/NORMAL/g' Ballgown_Part_1.R
+sed -i 's/HBR/TUMOR/g' Ballgown_Part_1.R
+chmod +x Ballgown_Part_1.R
+sed -i 's/__Rep/_Rep/g' NORMAL_vs_TUMOR.csv		#bir şekilde içinde __Rep kalmış
+sudo R CMD BATCH Ballgown_Part_1.R				# .tsv files get generated
+
+# Check the output
+cat Ballgown_Part_1.Rout
+
+#What does the raw output from Ballgown look like?
+head NORMAL_vs_TUMOR_gene_results.tsv
+
+#How many genes are there on this chromosome?
+grep -v feature NORMAL_vs_TUMOR_gene_results.tsv | wc -l
+-- 0676
+
+#How many passed filter in NORMAL or TUMOR?
+grep -v feature NORMAL_vs_TUMOR_gene_results_filtered.tsv | wc -l
+-- 1572
+
+#How many differentially expressed genes were found on this chromosome (p-value < 0.05)?
+grep -v feature NORMAL_vs_TUMOR_gene_results_sig.tsv | wc -l
+-- 197
+
+#Display the top 20 DE genes. Look at some of those genes in IGV - do they make sense?
+grep -v feature NORMAL_vs_TUMOR_gene_results_sig.tsv | sort -rnk 3 | head -n 20 > top20_1.txt #Higher abundance in NORMAL
+grep -v feature NORMAL_vs_TUMOR_gene_results_sig.tsv | sort -nk 3 | head -n 20 > top20_2.txt #Higher abundance in TUMOR
+
+#Save all genes with P<0.05 to a new file.
+grep -v feature NORMAL_vs_TUMOR_gene_results_sig.tsv | cut -f 6 | sed 's/\"//g' > DE_genes.txt
+head DE_genes.txt
+
+#copy file from linux to windows
+pscp nury@192.168.10.74:/home/nury/workspace/rnaseq/de/ballgown/ref_only/DE_genes.txt "G:\My Drive\Bioinformatics\Biosequence\Final HW\DE_genes.txt"
+
+#copy top 20 gene files to windows
+pscp nury@192.168.10.74:/home/nury/workspace/rnaseq/de/ballgown/ref_only/top20_1.txt "G:\My Drive\Bioinformatics\Biosequence\Final HW\top20_1.txt"
+pscp nury@192.168.10.74:/home/nury/workspace/rnaseq/de/ballgown/ref_only/top20_2.txt "G:\My Drive\Bioinformatics\Biosequence\Final HW\top20_2.txt"
+
+---------------- edgeR Analysis ---------------- 
+#First, create a directory for results:
+cd $RNA_HOME/
+mkdir -p de/htseq_counts
+cd $RNA_HOME/de/htseq_counts
+
+#Create a mapping file to go from ENSG IDs (which htseq-count output) to Symbols:
+perl -ne 'if ($_ =~ /gene_id\s\"(ENSG\S+)\"\;/) { $id = $1; $name = undef; if ($_ =~ /gene_name\s\"(\S+)"\;/) { $name = $1; }; }; if ($id && $name) {print "$id\t$name\n";} if ($_=~/gene_id\s\"(ERCC\S+)\"/){print "$1\t$1\n";}' $RNA_REF_HW_GTF | sort | uniq > ENSG_ID2Name.txt
+head ENSG_ID2Name.txt
+
+#copy file from linux to windows
+pscp nury@192.168.10.74:/home/nury/workspace/rnaseq/de/htseq_counts/ENSG_ID2Name.txt "G:\My Drive\Bioinformatics\Biosequence\Final HW\ENSG_ID2Name.txt"
+
+#Determine the number of unique Ensembl Gene IDs and symbols. What does this tell you?
+cut -f 1 ENSG_ID2Name.txt | sort | uniq | wc
+-- 60676   60676  970816
+
+cut -f 2 ENSG_ID2Name.txt | sort | uniq | wc
+-- 60642   60642  540090
+
+cut -f 2 ENSG_ID2Name.txt | sort | uniq -c | sort -r | head
+	2 ZNF883
+    2 TMSB15B
+	2 TBCE
+	2 SOD2
+	2 SNORD3D
+	2 SNORD38B
+	2 SNORA50A
+	2 SNORA17B
+	2 SNORA16A
+	2 SMIM40
+
+#Download and edit EdgeR.R file and put it to linux 
+pscp "G:\My Drive\Bioinformatics\Biosequence\Final HW\EdgeR.R" nury@192.168.10.74:/home/nury/workspace/rnaseq/de/htseq_counts/EdgeR.R
+chmod +x EdgeR.R
+
+#Execute EdgeR.R file
+sudo R CMD BATCH "/home/nury/workspace/rnaseq/de/htseq_counts/EdgeR.R"
+
+pscp nury@192.168.10.74:/home/nury/workspace/rnaseq/de/htseq_counts/EdgeR.Rout "G:\My Drive\Bioinformatics\Biosequence\Final HW\EdgeR.Rout" 
+
+cat $RNA_HOME/de/ballgown/ref_only/DE_genes.txt
+cat $RNA_HOME/de/htseq_counts/DE_genes.txt
+
+cd $RNA_HOME/de/
+
+cut -f 1 $RNA_HOME/de/ballgown/ref_only/DE_genes.txt | sort  > ballgown_DE_gene_symbols.txt
+cut -f 2 $RNA_HOME/de/htseq_counts/DE_genes.txt | sort > htseq_counts_edgeR_DE_gene_symbols.txt
+
+#copy generated files to my local so that I can compare them
+pscp nury@192.168.10.74:/home/nury/workspace/rnaseq/de/ballgown_DE_gene_symbols.txt "G:\My Drive\Bioinformatics\Biosequence\Final HW\ballgown_DE_gene_symbols.txt" 
+pscp nury@192.168.10.74:/home/nury/workspace/rnaseq/de/htseq_counts_edgeR_DE_gene_symbols.txt "G:\My Drive\Bioinformatics\Biosequence\Final HW\htseq_counts_edgeR_DE_gene_symbols.txt" 
+
+-- 102 common elements in "List 1" and "List 2":
+-- See the list in other document
+
+
+---------------- 3-iii. Ballgown DE Visualization ---------------- 
+pscp "G:\My Drive\Bioinformatics\Biosequence\Final HW\Ballgown_Part_2.R" nury@192.168.10.74:/home/nury/workspace/rnaseq/de/ballgown/ref_only
+cd $RNA_HOME/de/ballgown/ref_only
+chmod +x Ballgown_Part_2.R
+sudo R CMD BATCH Ballgown_Part_2.R 
+
+-- get output file from linux to windows: Tutorial_Part2_ballgown_output.pdf
+pscp nury@192.168.10.74:/home/nury/workspace/rnaseq/de/ballgown/ref_only/Part2_ballgown_output.pdf "G:\My Drive\Bioinformatics\Biosequence\Final HW\Part2_ballgown_output.pdf"
+pscp nury@192.168.10.74:/home/nury/workspace/rnaseq/de/ballgown/ref_only/Ballgown_Part_2.Rout "G:\My Drive\Bioinformatics\Biosequence\Final HW\Ballgown_Part_2.Rout"
+
+---------------- SUPPLEMENTARY R ANALYSIS ---------------- 
+cd $RNA_HOME/de/ballgown/ref_only/
+
+pscp "G:\My Drive\Bioinformatics\Biosequence\Final HW\SupplementaryR.R" nury@192.168.10.74:/home/nury/workspace/rnaseq/de/ballgown/ref_only/SupplementaryR.R
+sudo R CMD BATCH SupplementaryR.R 
+pscp nury@192.168.10.74:/home/nury/workspace/rnaseq/de/ballgown/ref_only/Part3_Supplementary_R_output.pdf "G:\My Drive\Bioinformatics\Biosequence\Final HW\Part3_Supplementary_R_output.pdf" 
+
+---------------- VARIATION PIPELINE ---------------- 
+
+---------------- END OF VARIATION PIPELINE ---------------- 
+
+---------------- GENE SET ENRICHMENT ANALYSIS ---------------- 
+
+wget http://eng1.mu.edu.tr/~tugba/SeqAnalysis/c6.all.v7.1.entrez.gmt 
+wget http://eng1.mu.edu.tr/~tugba/SeqAnalysis/c7.all.v7.1.entrez.gmt
+
+#For human data sets, on Linux shell, in R, please use the following enrichment code :
+library(clusterProfiler)
+library(GSEABase)
+library(org.Hs.eg.db)
+filename<- "/home/nury/workspace/rnaseq/enrichment/c7.all.v7.1.entrez.gmt"
+
+#gmtfile <- system.file(filename)
+
+c6 <- read.gmt(filename)
+
+/*
+library("pathview")
+library(clusterProfiler)
+library(GSEABase)
+c7 <- read.gmt("c7.all.v7.1.entrez.gmt")
+ImmuneSignatureEnrich <- enricher(protein2symbol$ENTREZID, TERM2GENE=c7, pvalueCutoff = 0.01)
+ImmuneSignatureEnrich <- setReadable(ImmuneSignatureEnrich, OrgDb = org.Hs.eg.db, keyType = "ENTREZID")
+ImmuneSignatureEnrich.df<- data.frame(ImmuneSignatureEnrich)
+*/
+
+yourEntrezIdList<- c(706,2192,2687,6305,7078,9127,9609,11135,23151,23543,23551,23654,25830,29775,55687,55964,85358,85378,91289,164633,503637,101927051) #USE YOUR OWN ENTREZ GENEID LIST HERE
+ImmunSigEnrich <- enricher(yourEntrezIdList, TERM2GENE=c6, pvalueCutoff = 0.01)
+ImmunSigEnrich <- setReadable(ImmunSigEnrich, OrgDb = org.Hs.eg.db, keyType = "ENTREZID")
+write.csv(ImmunSigEnrich,"MyImmunePathwayRelatedGenes.csv")
+goEnrich<-enrichGO(gene= yourEntrezIdList,OrgDb= org.Hs.eg.db, ont="ALL",pAdjustMethod="BH",pvalueCutoff = 0.01,readable= TRUE)
+write.csv(goEnrich,"MyGORelatedGenes.csv")
+keggEnrich<-enrichKEGG(gene= yourEntrezIdList,organism= "hsa",pAdjustMethod="BH",pvalueCutoff = 0.01)
+write.csv(keggEnrich,"MyKEGGRelatedGenes.csv")

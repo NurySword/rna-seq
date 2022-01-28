@@ -1,0 +1,241 @@
+# parameters:/home/nury/workspace/rnaseq/rnaseqmut/script/filtermut.py -d 5 -f 0.0 -b 0 -c 0,1,2 -l NORMAL_Rep1,NORMAL_Rep2,NORMAL_Rep3,TUMOR_Rep1,TUMOR_Rep2,TUMOR_Rep3
+# scripts used:
+# #!/bin/env python3
+# '''
+# Filter mutations based on the various conditions defined by user
+# '''
+# 
+# from __future__ import print_function
+# import sys,math;
+# import argparse;
+# import re;
+# 
+# parser=argparse.ArgumentParser(description="filter mutations in samples.");
+# 
+# sampledef=parser.add_argument_group('Sample definitions');
+# sampledef.add_argument('-c','--control',default='',help='The index of control group samples, separated by comma. For example, 0,2,4 defines a control group of 3 samples: the 1st, the 3rd and the 5th sample in the order of the input table. Default: empty (do not use any control samples)');
+# sampledef.add_argument('-i','--treatment',default='',help='The index of treatment group samples, separated by comma. Default: complement of control samples (if -c/--control option is not specified, use all samples as treatment samples).');
+# sampledef.add_argument('-t','--min-recurrent',type=int,default=1,help='Print mutations only occuring in at least this number of good treatment samples, defined as those with mutation >=min-recread reads and >=min-recfrac percent frequency. Default 1.');
+# sampledef.add_argument('-d','--min-recread',type=int,default=10,help='Minimum alt reads defined in treated good samples, default 10.');
+# sampledef.add_argument('-f','--min-recfrac',type=float,default=0.2,help='Minimum alt reads frequency in treated good samples, default 0.2.');
+# sampledef.add_argument('-a','--min-ref',type=int,default=4,help='Minimum reference reads in control samples. Default 4.');
+# sampledef.add_argument('-b','--max-alt',type=int,default=4,help='Maximum alternative reads in control samples. Default 4.');
+# 
+# outputgroup=parser.add_argument_group('Input/output options');
+# outputgroup.add_argument('-p','--passall',action='store_true',help='Do not do any filtering');
+# outputgroup.add_argument('-n','--no-header',action='store_true',help='Do not print header and script used');
+# outputgroup.add_argument('-z','--no-vcf',action='store_true',help='Do not print in vcf format; print as it is.');
+# outputgroup.add_argument('-l','--labels',default='',help='Labels used for each sample, separated by comma. Default: SAMPLE_x where x is the sample ID. The number of lables MUST be identical to the number of all samples in the original table, not only those defined by the -c/-i parameter.');
+# outputgroup.add_argument('--DP2',action='store_true',help='DP2 field instad of DP4 field is used in both input/output files');
+# outputgroup.add_argument('--DP2-out',action='store_true',help='DP2 field instad of DP4 field is used in output files. This option is automatically set true if --DP2 is specified.');
+# outputgroup.add_argument('-x','--region',help='Only output mutations falling into a specific region, for example chr11:1-10000');
+# 
+# 
+# args=parser.parse_args();
+# 
+# # process regions
+# hasregion=False;
+# regionchr='';
+# regionstart=0;
+# regionend=0;
+# if args.region is not None:
+# hasregion=True;
+# rgpattern=re.findall('(\w+):(\d+)-(\d+)',args.region);
+# if len(rgpattern)==0:
+# print('Error: unknown region '+args.region,file=sys.stderr);
+# sys.exit(-1);
+# regionchr=rgpattern[0][0];
+# regionstart=int(rgpattern[0][1]);
+# regionend=int(rgpattern[0][2]);
+# 
+# # process samples
+# # control and treatment groups
+# nsample=-1;
+# ctrlsample=[];
+# treatmentsample=[];
+# if args.control != '':
+# ctrlsample= [int(x) for x in args.control.split(',')];
+# if args.treatment != '':
+# treatmentsample= [int(x) for x in args.treatment.split(',')];
+# # sample labels
+# # allsamplestr="CONTROL CLR4602 CLR4603 CLR4604 CLR4575 CLR4576 CLR4597 CLR4599 CLR4600 CLR4577 CLR4579 CLR4585 CLR4581 CLR4583 CLR4589 CLR4591 CLR4593 CLR4595 HR-RCT-1 HR-RCT-2 HR-RCT-3 HR-RCT-4 HR-RCT-5 HR-RCT-6 HR-RCT-7 HR-RCT-8 HR-RCT-9 HR-RCT-10 HR-RCT-11 HR-RCT-12 CLR4580 CLR4582 CLR4584 CLR4586 CLR4588 CLR4590 CLR4592 CLR4594 CLR4596 CLR4598"
+# allsamplelabel=[];
+# if args.labels != '':
+# allsamplelabel=args.labels.split(',');
+# 
+# allusedsample=[];
+# 
+# if args.no_header==False:
+# print('# parameters:'+' '.join(sys.argv));
+# print('# scripts used:');
+# for line in open(sys.argv[0]):
+# print('# '+line.strip());
+# 
+# nline=0;
+# for line in sys.stdin:
+# if line[0]=='#':
+# print(line,end='');
+# continue;
+# nline=nline+1;
+# if nline % 100000 ==1:
+# fd=line.strip().split();
+# print(str(nline)+' '+fd[0]+' '+fd[1],file=sys.stderr);
+# fd=line.strip().split();
+# # get the information of control and treatment only using the 1st line
+# if nline==1:
+# fdi=[int(x) for x in fd[4:]];
+# if args.DP2:
+# nsample= int(len(fdi)/2);
+# else:
+# nsample= int(len(fdi)/4);
+# print('Number of samples:'+str(nsample),file=sys.stderr);
+# # check sample labels
+# if args.labels != '':
+# if len(allsamplelabel) != nsample:
+# print('Error: the number of samples defined in the --labels parameter does not correspond to the columns in the table.',file=sys.stderr);
+# sys.exit(-1);
+# else:
+# allsamplelabel=['SAMPLE_'+str(x) for x in range(nsample)];
+# # check control groups and treatment groups
+# if args.treatment == '':
+# treatmentsample=[x for x in range(nsample) if x not in ctrlsample];
+# print('CONTROL group definition:'+','.join([str(x) for x in ctrlsample]),file=sys.stderr);
+# print('TREATMENT group definition:'+','.join([str(x) for x in treatmentsample]),file=sys.stderr);
+# allusedsample=ctrlsample + treatmentsample;
+# # redefine allsamplelabel
+# allsamplelabel=[allsamplelabel[x] for x in allusedsample];
+# # region
+# if hasregion:
+# if regionchr != fd[0]:
+# continue;
+# cpos=int(fd[1]);
+# if cpos < regionstart or cpos > regionend:
+# continue;
+# fdi=[int(x) for x in fd[4:]];
+# fdi_b=[];
+# fdi2=[];
+# for x in allusedsample:
+# if args.DP2:
+# fdi_b+=[fdi[2*x], fdi[2*x+1]];
+# fdi2+=[fdi[2*x],fdi[2*x+1]];
+# else:
+# fdi2+=[fdi[4*x]+fdi[4*x+1],fdi[4*x+2]+fdi[4*x+3]];
+# if args.DP2_out:
+# fdi_b+=[fdi[4*x]+fdi[4*x+1],fdi[4*x+2]+fdi[4*x+3]];
+# else:
+# fdi_b+=[fdi[4*x],fdi[4*x+1],fdi[4*x+2],fdi[4*x+3]];
+# fdiref=[fdi2[2*x] for x in range(int(len(fdi2)/2))];
+# fdialt=[fdi2[2*x+1] for x in range(int(len(fdi2)/2))];
+# fdisum=[fdiref[x]+fdialt[x] for x in range(len(fdiref))];
+# for k in range(len(fdisum)):
+# if fdisum[k]==0:
+# fdisum[k]=1;
+# fdifrac=[fdialt[i]*1.0/fdisum[i] for i in range(len(fdisum))];
+# fdigood=[( (fdifrac[i]>=args.min_recfrac) and  (fdialt[i]>=args.min_recread))*1 for i in range(len(fdisum))];
+# #print(fdiref);
+# #print(fdialt);
+# #print([int(x*100)/100.0 for x in fdifrac]);
+# #print(fdigood);
+# # print only if it occurs in recurrent tumors
+# if args.passall==False:
+# if sum(fdialt[:len(ctrlsample)])>args.max_alt:
+# continue;
+# # exclude those with too few read coverages
+# if sum(fdiref[:len(ctrlsample)])<args.min_ref:
+# continue;
+# if sum(fdigood[len(ctrlsample):])<args.min_recurrent:
+# continue;
+# # print only if at least 2 recurrent samples with read count >=10 and frequency >=10%
+# # print in VCF file
+# if args.no_vcf==False:
+# print('\t'.join([fd[0],fd[1],".",fd[2],fd[3],"1.0"]),end='\t');
+# for i in range(len(allsamplelabel)):
+# if args.DP2 or args.DP2_out:
+# print(allsamplelabel[i]+".DP2="+','.join([str(x) for x in fdi_b[(2*i):(2*i+2)]]),end='');
+# print(';',end='');
+# else:
+# print(allsamplelabel[i]+".DP4="+','.join([str(x) for x in fdi_b[(4*i):(4*i+4)]]),end='');
+# print(';',end='');
+# print();
+# else:
+# print('\t'.join([fd[0],fd[1],fd[2],fd[3]]),end='\t');
+# print('\t'.join([str(x) for x in fdi_b]));
+# 
+#chrom	pos	ref	alt	NORMAL_Rep1.reff	NORMAL_Rep1.refv	NORMAL_Rep1.altf	NORMAL_Rep1.altv	NORMAL_Rep2.reff	NORMAL_Rep2.refv	NORMAL_Rep2.altf	NORMAL_Rep2.altv	NORMAL_Rep3.reff	NORMAL_Rep3.refv	NORMAL_Rep3.altf	NORMAL_Rep3.altv	TUMOR_Rep1.reff	TUMOR_Rep1.refv	TUMOR_Rep1.altf	TUMOR_Rep1.altv	TUMOR_Rep2.reff	TUMOR_Rep2.refv	TUMOR_Rep2.altf	TUMOR_Rep2.altv	TUMOR_Rep3.reff	TUMOR_Rep3.refv	TUMOR_Rep3.altf	TUMOR_Rep3.altv
+22	19142729	.	G	A	1.0	NORMAL_Rep1.DP4=19,17,0,0;NORMAL_Rep2.DP4=10,5,0,0;NORMAL_Rep3.DP4=19,20,0,0;TUMOR_Rep1.DP4=8,10,1,1;TUMOR_Rep2.DP4=14,13,3,3;TUMOR_Rep3.DP4=15,12,0,0;
+22	20065629	.	C	T	1.0	NORMAL_Rep1.DP4=9,6,0,0;NORMAL_Rep2.DP4=11,12,0,0;NORMAL_Rep3.DP4=11,12,0,0;TUMOR_Rep1.DP4=0,0,6,7;TUMOR_Rep2.DP4=0,0,5,4;TUMOR_Rep3.DP4=0,0,3,6;
+22	21762879	.	G	A	1.0	NORMAL_Rep1.DP4=60,40,0,0;NORMAL_Rep2.DP4=59,37,0,0;NORMAL_Rep3.DP4=63,44,0,0;TUMOR_Rep1.DP4=44,35,4,2;TUMOR_Rep2.DP4=59,47,0,0;TUMOR_Rep3.DP4=51,29,0,0;
+22	23894778	.	G	C	1.0	NORMAL_Rep1.DP4=953,893,0,0;NORMAL_Rep2.DP4=982,936,0,0;NORMAL_Rep3.DP4=958,937,0,0;TUMOR_Rep1.DP4=841,794,0,0;TUMOR_Rep2.DP4=893,842,0,0;TUMOR_Rep3.DP4=845,824,5,0;
+22	23895100	.	C	T	1.0	NORMAL_Rep1.DP4=816,950,0,0;NORMAL_Rep2.DP4=865,1012,0,0;NORMAL_Rep3.DP4=836,958,0,0;TUMOR_Rep1.DP4=856,827,0,1;TUMOR_Rep2.DP4=923,890,0,0;TUMOR_Rep3.DP4=968,930,1,4;
+22	24541206	.	G	T	1.0	NORMAL_Rep1.DP4=66,43,0,0;NORMAL_Rep2.DP4=61,49,0,0;NORMAL_Rep3.DP4=65,51,0,0;TUMOR_Rep1.DP4=87,60,0,0;TUMOR_Rep2.DP4=74,52,0,0;TUMOR_Rep3.DP4=75,65,3,3;
+22	24571943	.	T	C	1.0	NORMAL_Rep1.DP4=57,92,0,0;NORMAL_Rep2.DP4=76,82,0,0;NORMAL_Rep3.DP4=70,83,0,0;TUMOR_Rep1.DP4=98,117,0,1;TUMOR_Rep2.DP4=129,107,0,6;TUMOR_Rep3.DP4=111,101,0,4;
+22	24573814	.	A	G	1.0	NORMAL_Rep1.DP4=1,2,0,0;NORMAL_Rep2.DP4=1,0,0,0;NORMAL_Rep3.DP4=1,2,0,0;TUMOR_Rep1.DP4=15,16,1,0;TUMOR_Rep2.DP4=16,18,1,1;TUMOR_Rep3.DP4=15,20,3,4;
+22	26492074	.	A	G	1.0	NORMAL_Rep1.DP4=27,15,0,0;NORMAL_Rep2.DP4=31,21,0,0;NORMAL_Rep3.DP4=28,16,0,0;TUMOR_Rep1.DP4=71,52,0,0;TUMOR_Rep2.DP4=65,44,0,0;TUMOR_Rep3.DP4=57,33,4,3;
+22	26540810	.	G	T	1.0	NORMAL_Rep1.DP4=15,17,0,0;NORMAL_Rep2.DP4=13,9,0,0;NORMAL_Rep3.DP4=15,7,0,0;TUMOR_Rep1.DP4=23,19,4,9;TUMOR_Rep2.DP4=20,18,2,5;TUMOR_Rep3.DP4=25,18,5,5;
+22	28795025	.	G	T	1.0	NORMAL_Rep1.DP4=102,42,0,0;NORMAL_Rep2.DP4=104,51,0,0;NORMAL_Rep3.DP4=104,49,0,0;TUMOR_Rep1.DP4=462,283,0,2;TUMOR_Rep2.DP4=477,273,0,5;TUMOR_Rep3.DP4=458,260,0,1;
+22	28795141	.	G	A	1.0	NORMAL_Rep1.DP4=170,122,0,0;NORMAL_Rep2.DP4=159,108,0,0;NORMAL_Rep3.DP4=151,103,0,0;TUMOR_Rep1.DP4=749,538,1,1;TUMOR_Rep2.DP4=722,552,2,3;TUMOR_Rep3.DP4=787,539,1,1;
+22	28795202	.	T	G	1.0	NORMAL_Rep1.DP4=192,137,0,0;NORMAL_Rep2.DP4=172,134,0,0;NORMAL_Rep3.DP4=172,129,0,0;TUMOR_Rep1.DP4=800,581,7,0;TUMOR_Rep2.DP4=782,592,2,1;TUMOR_Rep3.DP4=858,638,2,1;
+22	28795233	.	T	G	1.0	NORMAL_Rep1.DP4=177,139,0,0;NORMAL_Rep2.DP4=162,140,0,0;NORMAL_Rep3.DP4=155,158,0,0;TUMOR_Rep1.DP4=687,610,2,3;TUMOR_Rep2.DP4=680,613,0,0;TUMOR_Rep3.DP4=725,652,1,2;
+22	28795653	.	A	G	1.0	NORMAL_Rep1.DP4=167,118,0,0;NORMAL_Rep2.DP4=126,115,0,0;NORMAL_Rep3.DP4=160,137,0,0;TUMOR_Rep1.DP4=569,507,1,0;TUMOR_Rep2.DP4=574,553,4,2;TUMOR_Rep3.DP4=619,534,0,0;
+22	28797091	.	C	T	1.0	NORMAL_Rep1.DP4=90,34,0,0;NORMAL_Rep2.DP4=67,31,0,0;NORMAL_Rep3.DP4=70,40,0,0;TUMOR_Rep1.DP4=428,213,4,1;TUMOR_Rep2.DP4=429,213,0,0;TUMOR_Rep3.DP4=444,206,1,0;
+22	29141977	.	G	A	1.0	NORMAL_Rep1.DP4=10,4,0,0;NORMAL_Rep2.DP4=8,6,0,0;NORMAL_Rep3.DP4=10,10,0,0;TUMOR_Rep1.DP4=10,6,5,9;TUMOR_Rep2.DP4=8,10,2,3;TUMOR_Rep3.DP4=3,3,4,9;
+22	30008005	.	G	C	1.0	NORMAL_Rep1.DP4=7,10,0,0;NORMAL_Rep2.DP4=2,10,0,0;NORMAL_Rep3.DP4=4,8,0,0;TUMOR_Rep1.DP4=33,47,3,3;TUMOR_Rep2.DP4=23,31,0,0;TUMOR_Rep3.DP4=26,31,0,0;
+22	30422293	.	C	T	1.0	NORMAL_Rep1.DP4=4,4,0,0;NORMAL_Rep2.DP4=3,3,0,0;NORMAL_Rep3.DP4=1,2,0,0;TUMOR_Rep1.DP4=43,40,0,0;TUMOR_Rep2.DP4=43,45,3,3;TUMOR_Rep3.DP4=39,40,0,1;
+22	31433900	.	C	A	1.0	NORMAL_Rep1.DP4=39,36,0,0;NORMAL_Rep2.DP4=54,47,0,0;NORMAL_Rep3.DP4=49,48,0,0;TUMOR_Rep1.DP4=142,124,0,0;TUMOR_Rep2.DP4=138,103,3,2;TUMOR_Rep3.DP4=134,127,0,0;
+22	31628543	.	T	C	1.0	NORMAL_Rep1.DP4=1,0,0,0;NORMAL_Rep2.DP4=0,0,0,0;NORMAL_Rep3.DP4=3,2,0,0;TUMOR_Rep1.DP4=2,0,0,0;TUMOR_Rep2.DP4=2,0,0,0;TUMOR_Rep3.DP4=0,0,3,3;
+22	32395200	.	G	C	1.0	NORMAL_Rep1.DP4=190,127,0,0;NORMAL_Rep2.DP4=144,113,0,0;NORMAL_Rep3.DP4=183,123,0,0;TUMOR_Rep1.DP4=149,131,28,16;TUMOR_Rep2.DP4=149,125,39,26;TUMOR_Rep3.DP4=162,125,26,14;
+22	32489057	.	G	A	1.0	NORMAL_Rep1.DP4=0,0,0,0;NORMAL_Rep2.DP4=2,1,0,0;NORMAL_Rep3.DP4=0,1,0,0;TUMOR_Rep1.DP4=0,0,2,2;TUMOR_Rep2.DP4=0,0,1,2;TUMOR_Rep3.DP4=0,0,3,5;
+22	36285685	.	G	A	1.0	NORMAL_Rep1.DP4=367,268,0,0;NORMAL_Rep2.DP4=390,299,0,0;NORMAL_Rep3.DP4=373,279,0,0;TUMOR_Rep1.DP4=234,167,1,1;TUMOR_Rep2.DP4=270,197,0,0;TUMOR_Rep3.DP4=248,198,3,3;
+22	36298950	.	G	A	1.0	NORMAL_Rep1.DP4=357,287,0,0;NORMAL_Rep2.DP4=371,286,0,0;NORMAL_Rep3.DP4=354,281,0,0;TUMOR_Rep1.DP4=286,208,1,2;TUMOR_Rep2.DP4=281,198,3,3;TUMOR_Rep3.DP4=321,240,3,2;
+22	36306518	.	T	G	1.0	NORMAL_Rep1.DP4=365,291,0,0;NORMAL_Rep2.DP4=317,259,0,0;NORMAL_Rep3.DP4=303,245,0,0;TUMOR_Rep1.DP4=223,155,0,0;TUMOR_Rep2.DP4=195,158,2,3;TUMOR_Rep3.DP4=186,143,0,0;
+22	36318316	.	T	A	1.0	NORMAL_Rep1.DP4=368,313,0,0;NORMAL_Rep2.DP4=382,333,0,0;NORMAL_Rep3.DP4=384,299,0,0;TUMOR_Rep1.DP4=300,236,3,2;TUMOR_Rep2.DP4=295,247,1,1;TUMOR_Rep3.DP4=301,247,1,1;
+22	36511566	.	C	G	1.0	NORMAL_Rep1.DP4=303,201,0,0;NORMAL_Rep2.DP4=310,223,0,0;NORMAL_Rep3.DP4=313,213,0,0;TUMOR_Rep1.DP4=397,263,0,0;TUMOR_Rep2.DP4=428,266,0,0;TUMOR_Rep3.DP4=426,276,2,3;
+22	36517930	.	T	C	1.0	NORMAL_Rep1.DP4=1,2,0,0;NORMAL_Rep2.DP4=0,0,0,0;NORMAL_Rep3.DP4=1,1,0,0;TUMOR_Rep1.DP4=2,1,3,2;TUMOR_Rep2.DP4=2,0,2,1;TUMOR_Rep3.DP4=1,1,0,0;
+22	36518790	.	A	G	1.0	NORMAL_Rep1.DP4=506,386,0,0;NORMAL_Rep2.DP4=452,380,0,0;NORMAL_Rep3.DP4=476,403,0,0;TUMOR_Rep1.DP4=649,519,3,3;TUMOR_Rep2.DP4=670,585,0,0;TUMOR_Rep3.DP4=656,543,1,0;
+22	37631021	.	C	G	1.0	NORMAL_Rep1.DP4=14,15,0,0;NORMAL_Rep2.DP4=16,19,0,0;NORMAL_Rep3.DP4=15,15,0,0;TUMOR_Rep1.DP4=10,9,8,10;TUMOR_Rep2.DP4=14,19,3,7;TUMOR_Rep3.DP4=9,10,8,6;
+22	37677025	.	T	C	1.0	NORMAL_Rep1.DP4=1800,1572,0,0;NORMAL_Rep2.DP4=1830,1540,0,0;NORMAL_Rep3.DP4=1841,1607,0,0;TUMOR_Rep1.DP4=3648,3193,0,1;TUMOR_Rep2.DP4=3997,3448,5,1;TUMOR_Rep3.DP4=3894,3442,3,0;
+22	37677026	.	G	C	1.0	NORMAL_Rep1.DP4=1825,1586,0,0;NORMAL_Rep2.DP4=1857,1561,0,0;NORMAL_Rep3.DP4=1869,1626,0,0;TUMOR_Rep1.DP4=3671,3235,0,0;TUMOR_Rep2.DP4=4033,3481,3,2;TUMOR_Rep3.DP4=3920,3480,0,0;
+22	37678475	.	C	T	1.0	NORMAL_Rep1.DP4=2,5,0,0;NORMAL_Rep2.DP4=11,13,0,0;NORMAL_Rep3.DP4=8,13,0,0;TUMOR_Rep1.DP4=41,36,2,3;TUMOR_Rep2.DP4=43,31,1,1;TUMOR_Rep3.DP4=50,50,0,0;
+22	37678515	.	A	G	1.0	NORMAL_Rep1.DP4=1432,1718,0,0;NORMAL_Rep2.DP4=1480,1739,0,0;NORMAL_Rep3.DP4=1514,1848,0,0;TUMOR_Rep1.DP4=2861,3406,0,1;TUMOR_Rep2.DP4=2989,3551,2,4;TUMOR_Rep3.DP4=2961,3598,1,4;
+22	37678539	.	G	A	1.0	NORMAL_Rep1.DP4=1270,1612,0,0;NORMAL_Rep2.DP4=1277,1617,0,0;NORMAL_Rep3.DP4=1324,1685,0,0;TUMOR_Rep1.DP4=2497,3058,0,0;TUMOR_Rep2.DP4=2521,3128,3,2;TUMOR_Rep3.DP4=2492,3175,0,1;
+22	37678559	.	G	A	1.0	NORMAL_Rep1.DP4=1193,1414,0,0;NORMAL_Rep2.DP4=1263,1451,0,0;NORMAL_Rep3.DP4=1258,1484,0,0;TUMOR_Rep1.DP4=2335,2669,0,1;TUMOR_Rep2.DP4=2412,2741,1,2;TUMOR_Rep3.DP4=2317,2828,1,4;
+22	37678642	.	A	G	1.0	NORMAL_Rep1.DP4=1464,1321,0,0;NORMAL_Rep2.DP4=1592,1339,0,0;NORMAL_Rep3.DP4=1619,1408,0,0;TUMOR_Rep1.DP4=2818,2486,3,0;TUMOR_Rep2.DP4=2881,2542,0,0;TUMOR_Rep3.DP4=2819,2565,3,3;
+22	37679638	.	C	T	1.0	NORMAL_Rep1.DP4=1828,1573,0,0;NORMAL_Rep2.DP4=2010,1619,0,0;NORMAL_Rep3.DP4=1924,1617,0,0;TUMOR_Rep1.DP4=3727,2785,3,2;TUMOR_Rep2.DP4=3823,2868,1,0;TUMOR_Rep3.DP4=3763,2850,1,2;
+22	37679639	.	A	G	1.0	NORMAL_Rep1.DP4=1819,1573,0,0;NORMAL_Rep2.DP4=2008,1627,0,0;NORMAL_Rep3.DP4=1901,1620,0,0;TUMOR_Rep1.DP4=3708,2794,0,0;TUMOR_Rep2.DP4=3798,2870,0,0;TUMOR_Rep3.DP4=3737,2851,3,2;
+22	37679668	.	C	T	1.0	NORMAL_Rep1.DP4=1724,2186,0,0;NORMAL_Rep2.DP4=1899,2314,0,0;NORMAL_Rep3.DP4=1802,2280,0,0;TUMOR_Rep1.DP4=3586,4156,0,0;TUMOR_Rep2.DP4=3700,4168,2,0;TUMOR_Rep3.DP4=3663,4185,2,3;
+22	37679699	.	T	C	1.0	NORMAL_Rep1.DP4=1333,1780,0,0;NORMAL_Rep2.DP4=1471,1941,0,0;NORMAL_Rep3.DP4=1382,1891,0,0;TUMOR_Rep1.DP4=2876,3422,2,1;TUMOR_Rep2.DP4=2977,3404,2,1;TUMOR_Rep3.DP4=2920,3423,3,2;
+22	37679717	.	G	A	1.0	NORMAL_Rep1.DP4=1159,1603,0,0;NORMAL_Rep2.DP4=1265,1728,0,0;NORMAL_Rep3.DP4=1164,1698,0,0;TUMOR_Rep1.DP4=2558,3070,2,1;TUMOR_Rep2.DP4=2667,3041,2,1;TUMOR_Rep3.DP4=2616,3050,3,2;
+22	37679737	.	G	T	1.0	NORMAL_Rep1.DP4=991,1441,0,0;NORMAL_Rep2.DP4=1108,1559,0,0;NORMAL_Rep3.DP4=1001,1507,0,0;TUMOR_Rep1.DP4=2238,2738,0,2;TUMOR_Rep2.DP4=2311,2750,1,1;TUMOR_Rep3.DP4=2307,2772,3,2;
+22	37679777	.	A	G	1.0	NORMAL_Rep1.DP4=321,852,0,0;NORMAL_Rep2.DP4=367,935,0,0;NORMAL_Rep3.DP4=313,922,0,0;TUMOR_Rep1.DP4=802,1777,0,0;TUMOR_Rep2.DP4=856,1712,2,3;TUMOR_Rep3.DP4=855,1806,0,0;
+22	37862993	.	T	G	1.0	NORMAL_Rep1.DP4=352,323,0,0;NORMAL_Rep2.DP4=363,368,0,0;NORMAL_Rep3.DP4=361,323,0,0;TUMOR_Rep1.DP4=618,544,1,1;TUMOR_Rep2.DP4=586,523,0,0;TUMOR_Rep3.DP4=577,554,2,3;
+22	37948303	.	A	G	1.0	NORMAL_Rep1.DP4=2,0,0,0;NORMAL_Rep2.DP4=0,1,0,0;NORMAL_Rep3.DP4=1,0,0,0;TUMOR_Rep1.DP4=11,8,0,1;TUMOR_Rep2.DP4=13,15,0,1;TUMOR_Rep3.DP4=12,13,2,4;
+22	38291714	.	T	C	1.0	NORMAL_Rep1.DP4=17,12,0,0;NORMAL_Rep2.DP4=13,15,0,0;NORMAL_Rep3.DP4=20,17,0,0;TUMOR_Rep1.DP4=57,40,3,2;TUMOR_Rep2.DP4=63,43,2,1;TUMOR_Rep3.DP4=63,51,0,0;
+22	38367331	.	G	C	1.0	NORMAL_Rep1.DP4=2,2,0,0;NORMAL_Rep2.DP4=1,1,0,0;NORMAL_Rep3.DP4=4,4,0,0;TUMOR_Rep1.DP4=0,0,4,0;TUMOR_Rep2.DP4=0,0,8,3;TUMOR_Rep3.DP4=0,0,10,4;
+22	38483522	.	G	A	1.0	NORMAL_Rep1.DP4=105,48,0,0;NORMAL_Rep2.DP4=110,55,0,0;NORMAL_Rep3.DP4=94,52,0,0;TUMOR_Rep1.DP4=131,84,1,0;TUMOR_Rep2.DP4=146,91,3,3;TUMOR_Rep3.DP4=160,93,1,3;
+22	38485146	.	G	A	1.0	NORMAL_Rep1.DP4=133,123,0,0;NORMAL_Rep2.DP4=109,100,0,0;NORMAL_Rep3.DP4=133,121,0,0;TUMOR_Rep1.DP4=162,154,0,0;TUMOR_Rep2.DP4=174,164,0,1;TUMOR_Rep3.DP4=177,155,2,3;
+22	38485324	.	G	A	1.0	NORMAL_Rep1.DP4=128,80,0,0;NORMAL_Rep2.DP4=125,90,0,0;NORMAL_Rep3.DP4=121,91,0,0;TUMOR_Rep1.DP4=176,94,0,1;TUMOR_Rep2.DP4=183,118,0,2;TUMOR_Rep3.DP4=193,117,0,5;
+22	38733414	.	C	A	1.0	NORMAL_Rep1.DP4=36,36,0,0;NORMAL_Rep2.DP4=37,38,0,0;NORMAL_Rep3.DP4=33,37,0,0;TUMOR_Rep1.DP4=18,15,3,6;TUMOR_Rep2.DP4=15,9,2,4;TUMOR_Rep3.DP4=20,19,4,5;
+22	38862340	.	C	T	1.0	NORMAL_Rep1.DP4=52,58,0,0;NORMAL_Rep2.DP4=56,56,0,0;NORMAL_Rep3.DP4=61,60,0,0;TUMOR_Rep1.DP4=44,44,11,9;TUMOR_Rep2.DP4=36,46,10,7;TUMOR_Rep3.DP4=36,51,8,10;
+22	39318466	.	T	A	1.0	NORMAL_Rep1.DP4=2556,2779,0,0;NORMAL_Rep2.DP4=2487,2769,0,0;NORMAL_Rep3.DP4=2564,2810,0,0;TUMOR_Rep1.DP4=1834,1892,0,0;TUMOR_Rep2.DP4=1870,1969,3,2;TUMOR_Rep3.DP4=1850,1900,1,0;
+22	39515582	.	G	C	1.0	NORMAL_Rep1.DP4=15,7,0,0;NORMAL_Rep2.DP4=19,17,0,0;NORMAL_Rep3.DP4=17,14,0,0;TUMOR_Rep1.DP4=15,9,0,0;TUMOR_Rep2.DP4=24,12,3,3;TUMOR_Rep3.DP4=25,15,0,0;
+22	39520689	.	T	C	1.0	NORMAL_Rep1.DP4=133,97,0,0;NORMAL_Rep2.DP4=128,84,0,0;NORMAL_Rep3.DP4=156,103,0,0;TUMOR_Rep1.DP4=650,468,1,0;TUMOR_Rep2.DP4=668,455,3,3;TUMOR_Rep3.DP4=614,454,0,0;
+22	39521477	.	T	G	1.0	NORMAL_Rep1.DP4=139,125,0,0;NORMAL_Rep2.DP4=161,149,0,0;NORMAL_Rep3.DP4=173,136,0,0;TUMOR_Rep1.DP4=653,555,2,1;TUMOR_Rep2.DP4=706,585,3,2;TUMOR_Rep3.DP4=683,585,4,3;
+22	39522021	.	T	C	1.0	NORMAL_Rep1.DP4=146,193,0,0;NORMAL_Rep2.DP4=176,227,0,0;NORMAL_Rep3.DP4=163,195,0,0;TUMOR_Rep1.DP4=756,877,0,0;TUMOR_Rep2.DP4=786,948,0,0;TUMOR_Rep3.DP4=749,940,3,2;
+22	39522029	.	A	T	1.0	NORMAL_Rep1.DP4=146,182,0,0;NORMAL_Rep2.DP4=181,215,0,0;NORMAL_Rep3.DP4=165,182,0,0;TUMOR_Rep1.DP4=776,817,0,2;TUMOR_Rep2.DP4=799,863,0,5;TUMOR_Rep3.DP4=775,854,0,1;
+22	39522100	.	A	C	1.0	NORMAL_Rep1.DP4=170,166,0,0;NORMAL_Rep2.DP4=199,214,0,0;NORMAL_Rep3.DP4=181,174,0,0;TUMOR_Rep1.DP4=804,823,5,1;TUMOR_Rep2.DP4=847,842,1,0;TUMOR_Rep3.DP4=776,865,0,0;
+22	39522119	.	A	C	1.0	NORMAL_Rep1.DP4=176,172,0,0;NORMAL_Rep2.DP4=191,222,0,0;NORMAL_Rep3.DP4=178,184,0,0;TUMOR_Rep1.DP4=773,848,4,1;TUMOR_Rep2.DP4=784,882,2,0;TUMOR_Rep3.DP4=740,886,3,0;
+22	39522348	.	A	C	1.0	NORMAL_Rep1.DP4=126,185,0,0;NORMAL_Rep2.DP4=158,206,0,0;NORMAL_Rep3.DP4=149,179,0,0;TUMOR_Rep1.DP4=796,897,5,0;TUMOR_Rep2.DP4=793,917,2,0;TUMOR_Rep3.DP4=792,930,1,1;
+22	39522613	.	T	C	1.0	NORMAL_Rep1.DP4=50,103,0,0;NORMAL_Rep2.DP4=43,100,0,0;NORMAL_Rep3.DP4=55,89,0,0;TUMOR_Rep1.DP4=262,407,0,1;TUMOR_Rep2.DP4=272,455,0,5;TUMOR_Rep3.DP4=290,392,0,3;
+22	41255772	.	G	A	1.0	NORMAL_Rep1.DP4=2,2,0,0;NORMAL_Rep2.DP4=0,0,0,0;NORMAL_Rep3.DP4=0,0,0,0;TUMOR_Rep1.DP4=1,0,0,0;TUMOR_Rep2.DP4=0,0,0,0;TUMOR_Rep3.DP4=3,1,3,3;
+22	41301617	.	C	T	1.0	NORMAL_Rep1.DP4=9,5,0,0;NORMAL_Rep2.DP4=7,3,0,0;NORMAL_Rep3.DP4=11,4,0,0;TUMOR_Rep1.DP4=16,3,4,3;TUMOR_Rep2.DP4=12,1,3,1;TUMOR_Rep3.DP4=10,3,5,2;
+22	41524891	.	G	C	1.0	NORMAL_Rep1.DP4=88,126,0,0;NORMAL_Rep2.DP4=111,142,0,0;NORMAL_Rep3.DP4=110,142,0,0;TUMOR_Rep1.DP4=43,53,4,8;TUMOR_Rep2.DP4=39,69,10,16;TUMOR_Rep3.DP4=42,66,16,22;
+22	41663765	.	C	T	1.0	NORMAL_Rep1.DP4=227,269,0,0;NORMAL_Rep2.DP4=216,260,0,0;NORMAL_Rep3.DP4=224,279,0,0;TUMOR_Rep1.DP4=368,396,2,3;TUMOR_Rep2.DP4=369,415,0,0;TUMOR_Rep3.DP4=363,414,0,1;
+22	42086187	.	G	A	1.0	NORMAL_Rep1.DP4=165,105,0,0;NORMAL_Rep2.DP4=203,81,0,0;NORMAL_Rep3.DP4=189,110,0,0;TUMOR_Rep1.DP4=207,138,0,0;TUMOR_Rep2.DP4=208,129,0,0;TUMOR_Rep3.DP4=181,120,2,3;
+22	42835384	.	G	A	1.0	NORMAL_Rep1.DP4=48,47,0,0;NORMAL_Rep2.DP4=54,43,0,0;NORMAL_Rep3.DP4=53,38,0,0;TUMOR_Rep1.DP4=46,49,4,4;TUMOR_Rep2.DP4=55,46,1,1;TUMOR_Rep3.DP4=50,43,2,2;
+22	43161091	.	C	T	1.0	NORMAL_Rep1.DP4=70,88,0,0;NORMAL_Rep2.DP4=77,80,0,0;NORMAL_Rep3.DP4=84,84,0,0;TUMOR_Rep1.DP4=306,351,1,0;TUMOR_Rep2.DP4=331,319,2,3;TUMOR_Rep3.DP4=331,305,0,0;
+22	46350384	.	C	T	1.0	NORMAL_Rep1.DP4=19,16,0,0;NORMAL_Rep2.DP4=16,12,0,0;NORMAL_Rep3.DP4=25,20,0,0;TUMOR_Rep1.DP4=27,18,0,0;TUMOR_Rep2.DP4=20,23,3,2;TUMOR_Rep3.DP4=23,20,0,0;
+22	46677920	.	T	C	1.0	NORMAL_Rep1.DP4=12,7,0,0;NORMAL_Rep2.DP4=15,9,0,0;NORMAL_Rep3.DP4=10,7,0,0;TUMOR_Rep1.DP4=8,6,0,0;TUMOR_Rep2.DP4=8,7,1,1;TUMOR_Rep3.DP4=15,16,3,3;
+22	50243801	.	T	C	1.0	NORMAL_Rep1.DP4=17,7,0,0;NORMAL_Rep2.DP4=23,15,0,0;NORMAL_Rep3.DP4=18,19,0,0;TUMOR_Rep1.DP4=5,2,13,9;TUMOR_Rep2.DP4=7,5,13,12;TUMOR_Rep3.DP4=4,2,21,11;
+22	50289099	.	T	A	1.0	NORMAL_Rep1.DP4=75,55,0,0;NORMAL_Rep2.DP4=65,45,0,0;NORMAL_Rep3.DP4=65,49,0,0;TUMOR_Rep1.DP4=38,35,0,0;TUMOR_Rep2.DP4=38,28,0,0;TUMOR_Rep3.DP4=40,32,3,3;
+22	50460629	.	C	G	1.0	NORMAL_Rep1.DP4=64,40,0,0;NORMAL_Rep2.DP4=59,59,0,0;NORMAL_Rep3.DP4=57,38,0,0;TUMOR_Rep1.DP4=59,41,14,8;TUMOR_Rep2.DP4=66,56,16,13;TUMOR_Rep3.DP4=57,42,10,7;
+22	50506143	.	G	A	1.0	NORMAL_Rep1.DP4=16,16,0,0;NORMAL_Rep2.DP4=15,16,0,0;NORMAL_Rep3.DP4=8,6,0,0;TUMOR_Rep1.DP4=46,44,3,2;TUMOR_Rep2.DP4=34,36,0,0;TUMOR_Rep3.DP4=38,39,0,0;

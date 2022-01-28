@@ -1,0 +1,10 @@
+KI270711.1	ensembl	exon	26291	26505	.	-	.	gene_id "ENSG00000271254"; transcript_id "ENST00000616361"; exon_number "18"; gene_name "AC240274.1"; cov "0.0";
+KI270711.1	ensembl	exon	29279	29626	.	-	.	gene_id "ENSG00000271254"; transcript_id "ENST00000616361"; exon_number "19"; gene_name "AC240274.1"; cov "0.0";
+KI270713.1	ensembl	transcript	21861	22024	.	-	.	gene_id "ENSG00000275405"; transcript_id "ENST00000619109"; gene_name "AC213203.2"; cov "0.0"; FPKM "0.0"; TPM "0.0";
+KI270713.1	ensembl	exon	21861	22024	.	-	.	gene_id "ENSG00000275405"; transcript_id "ENST00000619109"; exon_number "1"; gene_name "AC213203.2"; cov "0.0";
+KI270713.1	ensembl	transcript	30437	30580	.	-	.	gene_id "ENSG00000275987"; transcript_id "ENST00000618083"; gene_name "AC213203.3"; cov "0.0"; FPKM "0.0"; TPM "0.0";
+KI270713.1	ensembl	exon	30437	30580	.	-	.	gene_id "ENSG00000275987"; transcript_id "ENST00000618083"; exon_number "1"; gene_name "AC213203.3"; cov "0.0";
+KI270713.1	ensembl	transcript	31698	32528	.	-	.	gene_id "ENSG00000277475"; transcript_id "ENST00000612315"; gene_name "AC213203.4"; cov "0.0"; FPKM "0.0"; TPM "0.0";
+KI270713.1	ensembl	exon	31698	32528	.	-	.	gene_id "ENSG00000277475"; transcript_id "ENST00000612315"; exon_number "1"; gene_name "AC213203.4"; cov "0.0";
+KI270713.1	ensembl	transcript	35407	35916	.	+	.	gene_id "ENSG00000268674"; transcript_id "ENST00000601199"; gene_name "AC213203.1"; cov "0.0"; FPKM "0.0"; TPM "0.0";
+KI270713.1	ensembl	exon	35407	35916	.	+	.	gene_id "ENSG00000268674"; transcript_id "ENST00000601199"; exon_number "1"; gene_name "AC213203.1"; cov "0.0";

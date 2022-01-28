@@ -1,0 +1,10 @@
+# stringtie -p 2 -G /home/nury/workspace/rnaseq/refs/grch38_snp_tran/Homo_sapiens.GRCh38.99.gtf -e -B -o NORMAL_Rep3/transcripts.gtf -A NORMAL_Rep3/gene_abundances.tsv /home/nury/workspace/rnaseq/alignments/hisat2/practice/NORMAL_Rep3.bam
+# StringTie version 1.3.4d
+1	havana	transcript	185217	195411	.	-	.	gene_id "ENSG00000279457"; transcript_id "ENST00000623083"; ref_gene_name "WASH9P"; cov "0.0"; FPKM "0.000000"; TPM "0.000000";
+1	havana	exon	185217	185350	.	-	.	gene_id "ENSG00000279457"; transcript_id "ENST00000623083"; exon_number "1"; ref_gene_name "WASH9P"; cov "0.0";
+1	havana	exon	185491	185559	.	-	.	gene_id "ENSG00000279457"; transcript_id "ENST00000623083"; exon_number "2"; ref_gene_name "WASH9P"; cov "0.0";
+1	havana	exon	186317	186469	.	-	.	gene_id "ENSG00000279457"; transcript_id "ENST00000623083"; exon_number "3"; ref_gene_name "WASH9P"; cov "0.0";
+1	havana	exon	187129	187287	.	-	.	gene_id "ENSG00000279457"; transcript_id "ENST00000623083"; exon_number "4"; ref_gene_name "WASH9P"; cov "0.0";
+1	havana	exon	187376	187577	.	-	.	gene_id "ENSG00000279457"; transcript_id "ENST00000623083"; exon_number "5"; ref_gene_name "WASH9P"; cov "0.0";
+1	havana	exon	187755	187890	.	-	.	gene_id "ENSG00000279457"; transcript_id "ENST00000623083"; exon_number "6"; ref_gene_name "WASH9P"; cov "0.0";
+1	havana	exon	188130	188266	.	-	.	gene_id "ENSG00000279457"; transcript_id "ENST00000623083"; exon_number "7"; ref_gene_name "WASH9P"; cov "0.0";
