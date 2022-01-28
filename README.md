@@ -1,3 +1,6 @@
+All scripts can be found in this folder:
+https://github.com/NurySword/rna-seq/blob/main/Scripts/ALL%20SCRIPTS.txt
+
 Where did you get your normal/controls from? Same PRJN or a separate PRJN?
 Normal and controls are from the same NCBI project: PRJNA751582. 
 
